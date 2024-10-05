@@ -1,21 +1,21 @@
 import sys
 import json
 import pandas as pd
+import geopandas as gpd
 from geopy.distance import geodesic
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWebChannel import QWebChannel # Sert à passer du backend Python au frontend Js pour envoyer les statistiques au GUI, car il y a des soucis avec fetch()
 from PyQt5.QtCore import QUrl, QObject, pyqtSlot
+from PyQt5.QtGui import QIcon
 from shapely.geometry import Point
-import geopandas as gpd
-import json
 
 # Votre clé API Mapbox
 MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiZG91c3R5biIsImEiOiJjbTFhdDFyc2UxdXU1MmtzY3NyYXUxbjVtIn0.BQEmSIxwgtozSxhD6g7i7Q"
 MAPBOX_STYLE = "mapbox://styles/doustyn/cm1at50ju02bj01qo4vs34bfy"
 
 # Charger les contours des plans d'eau depuis un fichier GeoJSON ou shapefile
-water_bodies = gpd.read_file("find_water_map_files\corrected_water_polygons.shp")
+water_bodies = gpd.read_file("find_water_map_files\\corrected_water_polygons.shp")
 
 # Calculer les vitesses entre chaque point
 def calculate_speed_and_transportation_modes(df, calculation_water):
@@ -238,12 +238,12 @@ def ecriture_geojson_and_json(locations_df):
                               
     # Générer le GeoJSON
     geojson_data = generate_geojson(locations_df)
-    with open('json_files\geojson_data.json', 'w') as f:
+    with open('json_files\\geojson_data.json', 'w') as f:
          json.dump(geojson_data, f, indent=4)
 
 
     geojson_data_lines = generate_geojson_with_lines(locations_df)
-    with open('json_files\geojson_data_lines.json', 'w') as f:
+    with open('json_files\\geojson_data_lines.json', 'w') as f:
         json.dump(geojson_data_lines, f, indent=4)
 
     # Exemple d'affichage du GeoJSON généré
@@ -286,19 +286,21 @@ class MapWindow(QMainWindow):
         print_mapbox = True
         if print_mapbox:
             self.setCentralWidget(self.browser)
-            self.setWindowTitle("Mapbox Globe 3D in PyQt5")
-            self.resize(800, 600)
+            self.setWindowTitle("Polarsteps2stats")
+            self.resize(1000, 800)
+            self.setWindowIcon(QIcon('images/favicon.ico'))
+            
 
 def main():
     # Charger les données JSON
-    # with open('json_files\trip.json', 'r') as trip_file:
+    # with open('json_files\\trip.json', 'r') as trip_file:
     #     trip_data = json.load(trip_file)
 
     # with open('simplified_locations.json', 'r') as locations_file:
     #     locations_data = json.load(locations_file)
     # print('simplified_locations.json loaded.')
 
-    with open('json_files\locations.json', 'r') as locations_file:
+    with open('json_files\\locations.json', 'r') as locations_file:
         locations_data = json.load(locations_file)
     print(f"Length locations_data before time filter: {len(locations_data['locations'])}")
 

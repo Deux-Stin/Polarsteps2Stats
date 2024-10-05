@@ -1,6 +1,7 @@
 # Environnement
 .vscode
 .git
+.venv
 
 # Fichiers anciens
 *.old
