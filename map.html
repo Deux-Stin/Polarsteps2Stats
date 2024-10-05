@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Mapbox Globe 3D with GeoJSON</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+    <!-- Inclure le script QWebChannel pour la communication entre PyQt et JS -->
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+    <style>
+        body { margin: 0; padding: 0; display: flex; }
+        #map { width: 75%; height: 100vh; }
+        #stats { width: 25%; padding: 20px; background-color: #f4f4f4; font-family: Arial, sans-serif; }
+        .transport-stats { margin-bottom: 20px; }
+        .transport-stats span { font-size: 24px; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="stats">
+    <h2>Statistiques du Trajet</h2>
+    <div class="total-distance">
+        <strong>Distance totale :</strong> <span id="totalDistance">0</span> km <br /><br />
+    </div>
+    <div id="transportStats">
+        <!-- Les stats des moyens de transport seront insérées ici -->
+    </div>
+</div>
+<script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoiZG91c3R5biIsImEiOiJjbTFhdDFyc2UxdXU1MmtzY3NyYXUxbjVtIn0.BQEmSIxwgtozSxhD6g7i7Q';
+    const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/doustyn/cm1aukecq02bn01qodm7lapf0',
+        projection: 'globe',
+        zoom: 2,
+        center: [-34.8491377914073, 3.9891484592638347]
+    });
+
+    map.addControl(new mapboxgl.NavigationControl());
+
+    let currentIndex = 0;  // Index pour garder la trace du point actuel
+    let points = [];  // Liste des coordonnées des points
+
+    map.on('style.load', () => {
+        map.setFog({});
+    });
+
+    map.on('load', function () {
+        // Ajouter la source GeoJSON
+        map.addSource('points', {
+            'type': 'geojson',
+            'data': 'geojson_data.json'  // Intègre le GeoJSON généré
+        });
+
+        // Ajouter le calque de points
+        map.addLayer({
+            'id': 'points',
+            'type': 'circle',
+            'source': 'points',
+            'paint': {
+                'circle-radius': 5,
+                'circle-color': ['get', 'color']  // Utilise la couleur stockée dans les propriétés GeoJSON
+            }
+        });
+
+        // Charger les données GeoJSON et extraire les points
+        fetch('geojson_data.json')  // Récupérer le fichier GeoJSON
+            .then(response => response.json())
+            .then(data => {
+                points = data.features.map(feature => feature.geometry.coordinates);
+
+                // Initialiser sur le premier point si la liste est remplie
+                if (points.length > 0) {
+                    map.flyTo({
+                        center: points[currentIndex],
+                        zoom: 12  // Ajuste le zoom selon tes besoins
+                    });
+                }
+            });
+
+        // Ajouter les lignes entre les points
+        map.addSource('lines', {
+            'type': 'geojson',
+            'data': 'geojson_data_lines.json'  // Chemin vers le GeoJSON des lignes
+        });
+
+        map.addLayer({
+            'id': 'lines-layer',
+            'type': 'line',
+            'source': 'lines',
+            'layout': {
+                'line-join': 'round',
+                'line-cap': 'round'
+            },
+            'paint': {
+                'line-color': ['get', 'color'],  // Utilise la propriété "color" du GeoJSON
+                'line-width': 3
+            }
+        });
+
+        // Ajouter les popups pour chaque point
+        map.on('click', 'points', function (e) {
+            const coordinates = e.features[0].geometry.coordinates.slice();
+            const description = e.features[0].properties.description;
+
+            new mapboxgl.Popup()
+                .setLngLat(coordinates)
+                .setHTML('<strong>' + e.features[0].properties.name + '</strong><p>' + description + 
+                    coordinates + '</p>')
+                .addTo(map);
+
+            // Mettre à jour l'index du point actuel basé sur le clic
+            currentIndex = points.findIndex(point => point[0] === coordinates[0] && point[1] === coordinates[1]);
+
+            console.log('currentIndex : %d', currentIndex)
+            // Centrer la carte sur ce point après clic
+            map.flyTo({
+                center: coordinates,
+                zoom: 12
+            });
+        });
+
+        // Changer le curseur lorsque la souris est sur les points
+        map.on('mouseenter', 'points', function () {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+
+        map.on('mouseleave', 'points', function () {
+            map.getCanvas().style.cursor = '';
+        });
+    });
+
+    // Événement pour capturer les flèches du clavier
+    document.addEventListener('keydown', function (event) {
+        if (points.length > 0) {
+            if (event.key === "ArrowRight") {
+                // Flèche droite - aller au point suivant
+                currentIndex = (currentIndex + 1) % points.length;  // Boucle au début si on dépasse le dernier point
+                map.flyTo({
+                    center: points[currentIndex],
+                    zoom: 12  // Ajuste le zoom selon tes besoins
+                });
+            } else if (event.key === "ArrowLeft") {
+                // Flèche gauche - aller au point précédent
+                currentIndex = (currentIndex - 1 + points.length) % points.length;  // Boucle à la fin si on est au début
+                map.flyTo({
+                    center: points[currentIndex],
+                    zoom: 12  // Ajuste le zoom selon tes besoins
+                });
+            }
+        }
+    });
+
+    // Charger les données du backend via QWebChannel
+    new QWebChannel(qt.webChannelTransport, function (channel) {
+            var backend = channel.objects.backend;
+
+            // Récupérer les statistiques de transport depuis le backend (Python)
+            backend.getTransportStats(function (statsJson) {
+                const transportStats = JSON.parse(statsJson); // Convertir la chaîne en objet JSON
+                updateTransportStats(transportStats); // Mettre à jour l'UI avec les stats
+            });
+        });
+
+        // Fonction pour mettre à jour les statistiques dans l'encart
+        function updateTransportStats(stats) {
+            const totalDistance = stats.total_distance;
+            const distanceByMode = stats.total_distance_by_mode;
+            const percentageByMode = stats.total_percentage_by_mode;
+
+            const transportContainer = document.getElementById("transportStats");
+
+            // Vider le conteneur des stats
+            transportContainer.innerHTML = '';
+
+            // Couleurs et émojis pour chaque mode de transport
+            const transportIcons = {
+                "avion": { emoji: "✈️", color: "red" },
+                "bateau": { emoji: "🛥️", color: "blue" },
+                "bus": { emoji: "🚌", color: "yellow" },
+                "voiture": { emoji: "🚗", color: "orange" },
+                "à pied": { emoji: "🚶", color: "green" }
+            };
+
+            // Pour chaque mode de transport, afficher les statistiques
+            for (const [mode, distance] of Object.entries(distanceByMode)) {
+                const percentage = percentageByMode[mode];
+                const iconData = transportIcons[mode] || { emoji: "❓", color: "gray" }; // Gestion du cas où le mode est absent
+                
+                const statElement = document.createElement("div");
+                statElement.classList.add("transport-stats");
+                statElement.innerHTML = `
+                    <span>${iconData.emoji}</span> <strong style="color:${iconData.color};">${mode.charAt(0).toUpperCase() + mode.slice(1)}:</strong>
+                    ${distance.toFixed(2)} km (${percentage.toFixed(2)}%)
+                `;
+                transportContainer.appendChild(statElement);
+            }
+
+            // Mettre à jour la distance totale
+            document.getElementById("totalDistance").textContent = totalDistance.toFixed(2);
+        }
+
+</script>
+</body>
+</html>
