@@ -54,6 +54,7 @@
     pip install -r requirements.txt
 
 3. Ajoutez votre clé API Mapbox dans le fichier main.py :
+    ```bash
     MAPBOX_ACCESS_TOKEN = "votre_clé_mapbox"
 
 4. Lancez l'application :
@@ -66,5 +67,8 @@
 - Visualisez les points GPS sur la carte et les statistiques de trajet dans l'encart à droite.
 - Utilisez les flèches du clavier pour naviguer d’un point à un autre.
 - Les fichiers GeoJSON et JSON générés peuvent être trouvés dans le sous-répertoire du projet /json_files.
+
+
+
 
 © 2024 Polarsteps2Stats. Tous droits réservés.
