@@ -287,7 +287,7 @@ class MapWindow(QMainWindow):
         if print_mapbox:
             self.setCentralWidget(self.browser)
             self.setWindowTitle("Polarsteps2stats")
-            self.resize(1000, 800)
+            self.resize(1000, 1000)
             self.setWindowIcon(QIcon('images/favicon.ico'))
             
 
